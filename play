@@ -1,0 +1,132 @@
+% analyzed by hyosun
+% 260429 --- updated by hyosun with anmo
+clear all;
+addpath('/Volumes/nisl/EfferencecopyTeam/12.utility_fun');
+
+cd('/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun');
+
+line_list = dir;
+line_list = line_list([line_list.isdir]);
+line_list = line_list(~ismember({line_list.name},{'.','..'}));
+
+for f = [4] %1:length(line_list)
+    folder_save = '/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun/mat_files_v2_hyosun';
+
+    %pattern v2
+    patID_to_be_tested= [4:55];
+    longPatIdx=[8,9,42,43,48,49,54,55];
+
+    %pattern v1  (for LT34, LT40, LT56(ss05033))
+    % patID_to_be_tested= [4:43];
+    % longPatIdx=[8,9,42,43];
+    cd(line_list(f).name);
+    edrs = search_for_edr();
+    degree_threshold=-15;%anmo recommends to increase this, to 0 degrees
+    %nan_threshold=3000;
+    voltage_threshold=(degree_threshold+45)/135*5;
+
+    for n=1:size(edrs,1) %1:size(edrs,1) %[1:22,24:size(edrs,1)] %(3,6)
+        list(n).filename=edrs(n).name;
+        list(n).location=edrs(n).folder;
+        disp(['analyzing ' list(n).filename]);
+        cd(list(n).location);
+        [data, h] = import_edr_v2(list(n).filename);
+        dt=h.DT;
+        DUR = ones(size(patID_to_be_tested))*3;  %10
+        DUR(1,longPatIdx-3)=10;
+
+        %downsample
+        dt = dt*10;
+
+        %load with downsampling
+        t=data(1:10:end,1);
+        xpos=data(1:10:end,2);
+
+        if edrs(n).folder(end)=='1' || edrs(n).folder(end)=='2' %FTC709 rig1
+            lwba0=data(1:10:end,4);
+            rwba0=data(1:10:end,5);
+            patid=round(calibrate_patid_v2(data(1:10:end,3),patID_to_be_tested));
+            %%%%%%%%%if rig2 flipped %%%%%%%%%%%%%
+        % elseif edrs(n).folder(end)=='2'
+        %     lwba0=data(1:10:end,5);
+        %     rwba0=data(1:10:end,4);
+        %     patid=round(calibrate_patid_v2(data(1:10:end,3),patID_to_be_tested));
+        else
+            %%%%%%%%%%%% 101 %%%%%%%%%%%%%%%%%
+            lwba0=data(1:10:end,6);%*10^-3; %*10^-3; -> for LT34
+            rwba0=data(1:10:end,7);%*10^-3; %*10^-3; -> for LT34
+            patid=round(calibrate_patid_v2(data(1:10:end,4),patID_to_be_tested));
+        end
+
+        %clear "shock" noise in the wing beat signal
+        lwba0 = clear_wingbeat_noise1(lwba0,dt);
+        rwba0 = clear_wingbeat_noise1(rwba0,dt);
+
+
+        fc = 25;
+        lwba1=bpf_ak_v2(lwba0,dt,0,fc);  %%% V11_new folder
+        rwba1=bpf_ak_v2(rwba0,dt,0,fc);
+        % lwba1=lwba0; rwba1=rwba0;
+
+
+        %build an exclusion vector
+        % 1. exclude if either wingbeat drops below a threshold
+        bExclude = false(size(lwba0));
+        bExclude(lwba0<voltage_threshold)=true;
+        bExclude(rwba0<voltage_threshold)=true;
+
+        % 2. exclude if the wingbeat changes too rapidly
+        diffLWBA = abs(diff(lwba0([1 1:end])));
+        diffRWBA = abs(diff(rwba0([1 1:end])));
+
+        bExclude(diffLWBA>1)=true;
+        bExclude(diffRWBA>1)=true;
+
+
+
+        for p=1:length(patID_to_be_tested)
+
+            onset_idx=find(patid([1 1:(end-1)])<0 & patid==patID_to_be_tested(p));
+            plot(t,patid,'k',t(onset_idx),patid(onset_idx),'r*');
+
+            trial_idx=round(-1/dt):round((DUR(1,p)+1)/dt);
+            cnt = 0;
+            for i=1:length(onset_idx)
+                segment_idx_here = (onset_idx(i)+trial_idx);
+                critical_segment_idx_here = onset_idx(i)+(round(0.5/dt):round(2.5/dt));%this is the interval that is plotted for the paper
+                if  segment_idx_here(end) < length(lwba1) && sum(bExclude(critical_segment_idx_here))==0
+                    cnt = cnt +1;
+                    lwba_tr(cnt,:)=lwba1(segment_idx_here);
+                    rwba_tr(cnt,:)=rwba1(segment_idx_here);
+                    patid_tr(cnt,:)=patid(segment_idx_here);
+                end
+            end
+
+            if cnt>=2 % use only if the trial number is greater than or equal to 3
+                experimental_data(p,1,n)={trial_idx*dt};
+                experimental_data(p,2,n)={patid_tr};
+                experimental_data(p,3,n)={lwba_tr};
+                experimental_data(p,4,n)={rwba_tr};
+            else
+                experimental_data(p,1,n)={nan(size(trial_idx))};
+                experimental_data(p,2,n)={nan(size(trial_idx))};
+                experimental_data(p,3,n)={nan(size(trial_idx))};
+                experimental_data(p,4,n)={nan(size(trial_idx))};
+            end
+
+            clear patid_tr
+            clear rwba_tr
+            clear lwba_tr
+
+        end
+    end
+
+    cd(folder_save);
+    save([line_list(f).name '_n' num2str(size(edrs,1)) '_feedback_260604.mat'], 'experimental_data', '-mat');
+    clear;
+    cd('/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun');
+
+    line_list = dir;
+    line_list = line_list([line_list.isdir]);
+    line_list = line_list(~ismember({line_list.name},{'.','..'}));
+end
