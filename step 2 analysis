@@ -1,0 +1,240 @@
+% analyzed by hyosun
+% function get_single_WBA_by_prof_v8(baseline_idx, response_idx, response_idx2)
+%%%%% hyosun edited
+%%%%% 20250730
+%%%%% for EPG_bar_grating_test
+clear all; 
+folder_data = '/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun/mat_files_v2_hyosun'
+folder_save = '/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun/mat_files_v2_hyosun/figure';
+
+cd(folder_data);
+file_list=search_for_mat(folder_data);
+for i=1:length(file_list)
+    mat_file_names{1,i}=file_list(i).name;
+end
+
+
+for mat_file_idx=3:4 %1:length(file_list)
+    load(mat_file_names{mat_file_idx});
+    %%%%%%%% pattern V1 %%%%%%%%%%
+    % pattern_name=["BarR 4pW" "BarR 8pW" "BarR 10s" ...
+    %     "GratingR 4pW" "Uneven GratingR 4pW" "Starfield R" ...
+    %     "SpotR 2pW" "SpotR 4pW" "SpotR 6pW" "SpotUpR 2pW" "SpotUpR 4pW" "SpotUpR 6pW"...
+    %     "LoomingR 15deg rv20" "LoomingR 30deg rv20" "LoomingR 45deg rv20" "LoomingR 60deg rv20" ...
+    %     "LoomingR 45deg rv10" "LoomingR 45deg rv40" "LoomingR 45deg rv80" ...
+    %     "spotR 10s" ];
+    %%%%%%%% pattern V2 %%%%%%%%%%
+    pattern_name=["BarR 4pW" "BarR 8pW" "BarR 10s" ...
+        "GratingR 4pW" "Uneven GratingR 4pW" "Starfield R" ...
+        "SpotR 2pW" "SpotR 4pW" "SpotR 6pW" "SpotUpR 2pW" "SpotUpR 4pW" "SpotUpR 6pW"...
+        "LoomingR 15deg rv20" "LoomingR 30deg rv20" "LoomingR 45deg rv20" "LoomingR 60deg rv20" ...
+        "LoomingR 45deg rv10" "LoomingR 45deg rv40" "LoomingR 45deg rv80" ...
+        "spotR 10s" "theta likeR 4pw" "theta likeR 8pw" "theta likeR 10s" "theta like borderR 4pw" ...
+        "theta like borderR 8pw" "theta like borderR 10s"];
+
+  %%%%%%%%%%% get title of genotype %%%%%%%%%%%%
+  tit=[mat_file_names{mat_file_idx}(1:end-22)];
+   
+    num=num2str(size(experimental_data,3));
+
+    % t=experimental_data{6,1,2};
+    % dt=t(2)-t(1);
+
+    patterns=1;
+    for p=[1:2:size(experimental_data,1)]
+
+        n=1;
+        while sum(isnan(experimental_data{p,1,n})) > 100 && n<size(experimental_data,3)
+            n=n+1;
+        end
+         t{patterns}=experimental_data{p,1,n};
+
+        % dt=t(2)-t(1);
+        % if p==1
+        %     for n=1:1:size(experimental_data,3)
+        %         right_pat_wba_single_fly=(experimental_data{p,3,n}-experimental_data{p,4,n});
+        %         % left_pat_wba_single_fly=(experimental_data{p+1,4,n}-experimental_data{p+1,3,n});
+        %         wba_single_fly_data=right_pat_wba_single_fly;
+        %         wba_single_fly{patterns,n}=wba_single_fly_data/5*135;
+        %     end
+        % else
+        for n=1:1:size(experimental_data,3)
+            right_pat_wba_single_fly=(experimental_data{p,3,n}-experimental_data{p,4,n});
+            left_pat_wba_single_fly=(experimental_data{p+1,4,n}-experimental_data{p+1,3,n});
+            wba_single_fly_data=vertcat(right_pat_wba_single_fly,left_pat_wba_single_fly);
+            wba_single_fly{patterns,n}=wba_single_fly_data/5*135;
+        end
+        % end
+        patterns=patterns+1;
+
+    end
+
+    for p=1:1:size(wba_single_fly,1)
+        for n=1:1:size(wba_single_fly,2)
+            if size(wba_single_fly{p,n},1)==1
+                wba_flyavg{p,n}=wba_single_fly{p,n};
+            else
+                wba_flyavg{p,n}=mean(wba_single_fly{p,n},'omitnan');
+            end
+        end
+    end
+
+    for p=1:1:size(wba_flyavg,1)
+        wba_popavg{p}=mean(cell2mat(wba_flyavg(p,:)'),1,'omitnan');
+    end
+
+    %% single trial wba traces
+
+    % figure(1); clf; set(gcf,'Color','w'); set(gca,'Box','off');
+    % trial=1; 
+    % flynum=12;
+    % sgtitle(['fly#' num2str(flynum) 'trial#' num2str(trial)]);
+    % 
+    % for p=1:1:size(wba_flyavg,1)
+    %     set(gca,'Color','w');
+    %     subplot(6,5,p); %subplot(3,2,p);
+    %     %pattern movement
+    %     if p==4 || p==21
+    %         rectangle('Position',[0 -40 10 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+    %         xlim([-1,12]); ylim([-40 90]);
+    %     else
+    %         rectangle('Position',[1.5 -40 0.2 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+    %         xlim([0.8,3]); ylim([-40 90]);
+    %     end
+    %     cm_gray=repmat(linspace(0.4,0.8,size(wba_flyavg,2))',[1 3]);
+    %     plot(t{p},wba_single_fly{p,flynum}(trial,:),'Color',cm_gray(trial,:,:));
+    %     set(gca,'Box','off','TickDir','out','FontSize',12);
+    % 
+    % 
+    %     title(pattern_name(p));
+    % end
+    % sgtitle(tit);
+    % cd(folder_save);
+    % saveas(gcf,[tit '_singleTrial']);
+
+%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%% index for response peak %%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    stimEnd=ones(1,size(wba_flyavg,1))*1.7;
+    stimEnd(13:19)=[1.72 1.76 1.78 1.78 1.64 2.06 2.64];
+
+    for p=1:1:size(wba_flyavg,1)
+        if p==3 || p==20 || p==23 || p==26
+            baseline_idx{p}=find(t{p}>-1 & t{p}<0);
+            % response_idx{p}=find(t{p}>1.55 & t{p}<=1.85);
+        else
+            baseline_idx{p}=find(t{p}>1.3 & t{p}<1.5);
+            response_idx{p}=find(t{p}>stimEnd(p)-.05 & t{p}<=stimEnd(p)+.15);
+            % response_idx2{p}=find(t{p}>stimEnd(p) & t{p}<=stimEnd(p)+.2);
+        end
+    end
+    % response_idx2=find(t>1.85 & t<=11.7);
+    % response_idx3=find(t>11.7 & 7<=21.7);
+    % response_idx4=find(t>1.85 & t<4);
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    %% single wba traces
+
+    for p=1:1:size(wba_flyavg,1)
+        for n=1:size(wba_flyavg,2)
+            for trials=1:size(wba_single_fly{p,n},1)
+                based_single{p,n}(trials,:)=wba_single_fly{p,n}(trials,:)-mean(wba_single_fly{p,n}(trials,baseline_idx{p}),'omitnan');
+            end
+        end
+    end
+
+    %%
+    % loom_dur=[0.22 0.26 0.28 0.28 0.14 0.56 1.14];
+    % figure(2); clf; set(gcf,'Color','w'); set(gca,'Box','off');
+    % % trial=1; 
+    % flynum=10;  %EPGxCS =8/18 EPGxKir=1/2
+    % sgtitle([tit ' fly # ' num2str(flynum)]);
+    % for p=1:1:size(wba_flyavg,1)
+    %     set(gca,'Color','w');
+    %     subplot(6,5,p);
+    %     if p==3 || p==20
+    %         rectangle('Position',[0 -40 10 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+    %         xlim([-1,12]); ylim([-40 40]);
+    %     elseif sum(ismember([14:20],p))==1
+    %         rectangle('Position',[1.5 -40 loom_dur(p-13) 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+    %         ylim([-40 40]);
+    %     else
+    %         rectangle('Position',[1.5 -40 0.2 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+    %         xlim([0.8,3]); ylim([-40 40]);
+    %     end
+    %     for trials=1:size(wba_single_fly{p,flynum},1)
+    %         cm_gray=repmat(linspace(0.4,0.8,size(wba_flyavg,2))',[1 3]);
+    %         plot(t{p},based_single{p,flynum}(trials,:),'Color',cm_gray(n,:,:));
+    %         set(gca,'Box','off','TickDir','out','FontSize',12);
+    %     end
+    %     plot(t{p},mean(based_single{p,flynum},'omitnan'),'r','LineWidth',1.5);
+    %     title(pattern_name(p));
+    % end
+
+    % sgtitle(tit);
+    % cd(folder_save);
+
+    % % saveas(gcf,['figure/' tit '_flynum' num2str(flynum) '_singlefly']);
+    
+    
+    %% flies population wba traces
+    loom_dur=[0.22 0.26 0.28 0.28 0.14 0.56 1.14];
+    figure(3); clf; set(gcf,'Color','w'); set(gca,'Box','off');
+
+    for p=1:1:size(wba_flyavg,1)
+        set(gca,'Color','w');
+        subplot(6,5,p);hold on;
+        if p==3 || p==20 || p==23 || p==26
+            rectangle('Position',[0 -40 10 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+            xlim([-1,12]); ylim([-30 40]);
+        elseif sum(ismember([13:17],p))==1
+            rectangle('Position',[1.5 -40 loom_dur(p-12) 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+            xlim([1.4, 2]); ylim([-45 20]);
+        elseif sum(ismember([18:19],p))==1
+            rectangle('Position',[1.5 -40 loom_dur(p-12) 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+            xlim([1.4, 3.3]); ylim([-45 20]);
+        else
+            rectangle('Position',[1.5 -40 0.2 120],'FaceColor',[0.8 0.8 0.8],'FaceAlpha',0.5,'LineStyle','none');hold all;
+            xlim([1.4, 2]); ylim([-30 40]);
+        end
+        
+
+        for n=1:1:size(wba_flyavg,2)
+            cm_gray=repmat(linspace(0.4,0.8,size(wba_flyavg,2))',[1 3]);
+            plot(t{p},wba_flyavg{p,n},'Color',cm_gray(n,:));
+            set(gca,'Box','off','TickDir','out','FontSize',12);
+
+        end
+        plot(t{p},wba_popavg{p},'r','LineWidth',1.5);
+        title(pattern_name(p));
+    end
+    sgtitle(tit);
+
+    saveas(gcf,['figure/' tit '_PopulationTraces']);
+    save(['figure/quantified_wba_' tit], 'tit', 'pattern_name','wba_single_fly','wba_flyavg','wba_popavg','t');
+
+
+
+   clear;
+   % 
+   % folder_data = '/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun/mat_files_shun'
+   % folder_save = '/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun/mat_files_shun/figure';
+
+
+   % folder_data = '\\166.104.28.162\nisl\EfferencecopyTeam\Feedback_Neurons\data\mat_files_hyosun_v2_260429'
+   % folder_save = '\\166.104.28.162\nisl\EfferencecopyTeam\Feedback_Neurons\data\mat_files_hyosun_v2_260429\figure';
+
+   folder_data = '/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun/mat_files_v2_hyosun'
+   folder_save = '/Volumes/nisl/EfferencecopyTeam/Feedback_Neurons/data/Shun/mat_files_v2_hyosun/figure';
+   
+   cd(folder_data);
+   file_list=search_for_mat(folder_data);
+   for i=1:length(file_list)
+       mat_file_names{1,i}=file_list(i).name;
+   end
+
+end
+
+
